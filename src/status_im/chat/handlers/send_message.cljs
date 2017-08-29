@@ -125,7 +125,7 @@
     (fn [_ [_ chat-id {:keys [command]} hidden-params]]
       (let [command (-> command
                         (update-in [:content :params] #(apply dissoc % hidden-params))
-                        (dissoc :to-message :has-handler))]
+                        (dissoc :to-message :has-handler :raw-input))] 
         (messages/save chat-id command)))))
 
 (register-handler ::dispatch-responded-requests!

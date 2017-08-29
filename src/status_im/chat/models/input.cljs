@@ -140,13 +140,13 @@
                                    (subs command-name 1)))
                               (vals possible-actions))
                       (first))]
-         {:command  command
-          :metadata (if (and (nil? (:to-message-id input-metadata)) (not= :any to-message-id))
-                      (assoc input-metadata :to-message-id to-message-id)
-                      input-metadata)
-          :args     (if (empty? seq-arguments)
-                      (rest command-args)
-                      seq-arguments)}))))
+         {:command   command 
+          :metadata  (if (and (nil? (:to-message-id input-metadata)) (not= :any to-message-id))
+                       (assoc input-metadata :to-message-id to-message-id)
+                       input-metadata)
+          :args      (if (empty? seq-arguments)
+                       (rest command-args)
+                       seq-arguments)}))))
   ([{:keys [current-chat-id] :as db} chat-id]
    (selected-chat-command db chat-id (get-in db [:chats chat-id :input-text]))))
 
@@ -179,12 +179,11 @@
   -1 (`*no-argument-error*`) means error. It can happen if there is no command or selection.
 
   This method is basically just another way of calling `current-chat-argument-position`."
-  [{:keys [current-chat-id] :as db} chat-id]
-  (let [chat-id       (or chat-id current-chat-id)
-        input-text    (get-in db [:chats chat-id :input-text])
-        seq-arguments (get-in db [:chats chat-id :seq-arguments])
-        selection     (get-in db [:chat-ui-props chat-id :selection])
-        chat-command  (selected-chat-command db chat-id)]
+  [{:keys [current-chat-id] :as db}]
+  (let [input-text    (get-in db [:chats current-chat-id :input-text])
+        seq-arguments (get-in db [:chats current-chat-id :seq-arguments])
+        selection     (get-in db [:chat-ui-props current-chat-id :selection])
+        chat-command  (selected-chat-command db current-chat-id)]
     (current-chat-argument-position chat-command input-text selection seq-arguments)))
 
 (defn command-completion

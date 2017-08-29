@@ -3,7 +3,8 @@
             [status-im.utils.handlers :refer [register-handler-db]]
             [status-im.chat.models :as model]
             status-im.chat.events.input
-            status-im.chat.events.commands))
+            status-im.chat.events.commands
+            status-im.chat.events.animation))
 
 ;;;; Handlers
 

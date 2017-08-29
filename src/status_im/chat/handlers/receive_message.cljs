@@ -93,7 +93,7 @@
 
 (register-handler ::set-last-message
   (fn [{:keys [chats] :as db} [_ {:keys [chat-id] :as message}]]
-    (dispatch [:request-command-data message :short-preview])
+    (dispatch [:request-command-message-data message :short-preview])
     (assoc-in db [:chats chat-id :last-message] message)))
 
 (defn commands-loaded? [db chat-id]
