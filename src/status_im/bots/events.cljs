@@ -13,20 +13,20 @@
           []
           chats))
 
-;; TODO: optime this, for sure we don't need to re-calculate all bot subscriptions every time something in bot db changes
+(defn- subscription-values [subscriptions current-bot-db]
+  (reduce (fn [sub-values [sub-name sub-path]]
+            (assoc sub-values sub-name (get-in current-bot-db sub-path)))
+          {}
+          subscriptions))
+
+;; TODO(janherich): optimze this, for sure we don't need to re-calculate all bot subscriptions every time something in bot db changes
 (defn- check-subscriptions-fx
-  [db {:keys [bot key path value]}]
+  [db {:keys [bot path value]}]
   (let [{:keys [bot-db chats]} db
-        path'                  (or path [key])
-        subscriptions          (get-in db [:bot-subscriptions path'])
-        current-bot-db         (get bot-db bot)]
+        subscriptions          (get-in db [:bot-subscriptions path])]
     {:call-jail-function-n
      (for [{:keys [bot subscriptions name]} subscriptions
-           :let [subs-values (reduce
-                              (fn [acc [sub-name sub-path]]
-                                (assoc acc sub-name (get-in current-bot-db sub-path)))
-                              {}
-                              subscriptions)]]
+           :let [subs-values (subscription-values subscriptions (get bot-db bot))]]
        {:chat-id                 bot
         :function                :subscription
         :parameters              {:name          name
@@ -79,10 +79,12 @@
   (fn [db [{:keys [bot subscriptions] :as opts}]]
     (reduce
      (fn [db [sub-name sub-path]]
-       (let [sub-path'  (if (coll? sub-path) sub-path [sub-path])
-             sub-path'' (mapv keyword sub-path')]
-         (update-in db [:bot-subscriptions sub-path''] conj
-                    (assoc-in opts [:subscriptions sub-name] sub-path''))))
+       (let [keywordized-sub-path (mapv keyword
+                                        (if (coll? sub-path)
+                                          sub-path
+                                          [sub-path]))]
+         (update-in db [:bot-subscriptions keywordized-sub-path] conj
+                    (assoc-in opts [:subscriptions sub-name] keywordized-sub-path))))
      db
      subscriptions)))
 
