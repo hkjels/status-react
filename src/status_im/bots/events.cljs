@@ -88,14 +88,11 @@
      db
      subscriptions)))
 
-(register-handler-fx
+(register-handler-db
   ::calculated-subscription
   [trim-v]
-  (fn [{:keys [db]} [{:keys                  [bot path]
-                      {:keys [error result]} :result}]]
-    (when-not error
-      (let [returned (:returned result)
-            opts {:bot   bot
-                  :path  path
-                  :value returned}]
-        (set-in-bot-db db opts)))))
+  (fn [db [{:keys                  [bot path]
+            {:keys [error result]} :result}]]
+    (if error
+      db
+      (assoc-in db (concat [:bot-db bot] path) (:returned result)))))
