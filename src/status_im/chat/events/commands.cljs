@@ -61,8 +61,8 @@
       (assoc :db (assoc-in db [:message-data data-type message-id] returned))
       (and returned
            (= :preview data-type))
-      (assoc :update-message {:message-id message-id
-                              :preview (prn-str returned)})
+      (assoc :update-persisted-message {:message-id message-id
+                                        :preview (prn-str returned)})
       on-requested
       (assoc :dispatch (on-requested returned)))))
 

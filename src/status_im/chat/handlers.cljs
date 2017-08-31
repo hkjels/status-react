@@ -13,8 +13,7 @@
             [status-im.data-store.pending-messages :as pending-messages]
             [status-im.constants :refer [text-content-type
                                          content-type-command
-                                         content-type-command-request
-                                         default-number-of-messages
+                                         content-type-command-request 
                                          console-chat-id
                                          wallet-chat-id]]
             [status-im.utils.random :as random]
@@ -39,26 +38,6 @@
             status-im.chat.handlers.console
             [taoensso.timbre :as log]
             [tailrecursion.priority-map :refer [priority-map-by]]))
-
-(register-handler :load-more-messages
-  (fn [{:keys [current-chat-id loading-allowed] :as db} _]
-    (let [all-loaded? (get-in db [:chats current-chat-id :all-loaded?])]
-      (if loading-allowed
-        (do (am/go
-              (<! (a/timeout 400))
-              (dispatch [:set :loading-allowed true]))
-            (if all-loaded?
-              db
-              (let [messages-path [:chats current-chat-id :messages]
-                    messages      (get-in db messages-path)
-                    chat-messages (filter #(= current-chat-id (:chat-id %)) messages)
-                    new-messages  (messages/get-by-chat-id current-chat-id (count chat-messages))
-                    all-loaded?   (> default-number-of-messages (count new-messages))]
-                (-> db
-                    (assoc :loading-allowed false)
-                    (update-in messages-path concat new-messages)
-                    (assoc-in [:chats current-chat-id :all-loaded?] all-loaded?)))))
-        db))))
 
 (defn set-message-shown
   [db chat-id message-id]
