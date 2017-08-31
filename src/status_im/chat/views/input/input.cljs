@@ -82,11 +82,11 @@
                                     (dispatch [:send-current-message])
                                     (.setNativeProps @input-ref (clj->js {:text (str @input-text "\n")}))))
         :on-layout              (fn [e]
-                                  (set-container-width-fn (.-width (.-layout (.-nativeEvent e))))) 
-        :on-change              (fn [e] 
+                                  (set-container-width-fn (.-width (.-layout (.-nativeEvent e)))))
+        :on-change              (fn [e]
                                   (let [native-event (.-nativeEvent e)
                                         text         (.-text native-event)
-                                        content-size (.. native-event -contentSize)] 
+                                        content-size (.. native-event -contentSize)]
                                     (when (and (not single-line-input?)
                                                content-size)
                                       (set-layout-height-fn (.-height content-size)))
@@ -103,8 +103,7 @@
                                      (set-layout-height-fn h)))
         :on-selection-change    #(let [s   (-> (.-nativeEvent %)
                                                (.-selection)) 
-                                       end (.-end s)]
-                                   (log/debug (str ":on-selection " end))
+                                       end (.-end s)] 
                                    (dispatch [:update-text-selection end]))
         :style                  (style/input-view height single-line-input?)
         :placeholder-text-color style/color-input-helper-placeholder
