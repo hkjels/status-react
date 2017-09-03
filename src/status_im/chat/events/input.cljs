@@ -23,11 +23,6 @@
  (fn [coeffects _]
    (assoc coeffects :now (time/now-ms))))
 
-(reg-cofx
- :random-id
- (fn [coeffects _]
-   (assoc coeffects :random-id (random/id))))
-
 ;;;; Effects
 
 (reg-fx

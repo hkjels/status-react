@@ -5,21 +5,17 @@
             [status-im.utils.random :as random]
             [status-im.utils.sms-listener :refer [add-sms-listener
                                                   remove-sms-listener]]
-            [status-im.constants :refer [console-chat-id
-                                         text-content-type
-                                         content-type-command
-                                         content-type-command-request
-                                         content-type-status]]
-            [status-im.chat.constants :as const]
+            [status-im.constants :as const]
+            [status-im.chat.constants :as chat-const]
             [status-im.i18n :refer [label]]
             [clojure.string :as s]))
 
 (defn send-console-message [text]
   {:message-id   (random/id)
    :from         "me"
-   :to           console-chat-id
+   :to           const/console-chat-id
    :content      text
-   :content-type text-content-type
+   :content-type const/text-content-type
    :outgoing     true})
 
 ;; todo fn name is not too smart, but...
@@ -34,12 +30,12 @@
     (dispatch [:received-message
                {:message-id   message-id
                 :content      (command-content
-                                :confirmation-code
-                                (or message (label :t/confirmation-code)))
-                :content-type content-type-command-request
+                               :confirmation-code
+                               (or message (label :t/confirmation-code)))
+                :content-type const/content-type-command-request
                 :outgoing     false
-                :chat-id      console-chat-id
-                :from         console-chat-id
+                :chat-id      const/console-chat-id
+                :from         const/console-chat-id
                 :to           "me"}])))
 
 (defn start-listening-confirmation-code-sms []
@@ -47,9 +43,9 @@
              [:receive-sms]
              (fn []
                (let [listener (add-sms-listener
-                                (fn [{body :body}]
-                                  (when-let [matches (re-matches #"(\d{4})" body)]
-                                    (dispatch [:sign-up-confirm (second matches)]))))]
+                               (fn [{body :body}]
+                                 (when-let [matches (re-matches #"(\d{4})" body)]
+                                   (dispatch [:sign-up-confirm (second matches)]))))]
                  (dispatch [:start-listening-confirmation-code-sms listener])))]))
 
 (defn stop-listening-confirmation-code-sms [db]
@@ -62,10 +58,10 @@
   (dispatch [:received-message
              {:message-id   (random/id)
               :content      (label :t/contacts-syncronized)
-              :content-type text-content-type
+              :content-type const/text-content-type
               :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
+              :chat-id      const/console-chat-id
+              :from         const/console-chat-id
               :to           "me"}])
   (dispatch [:set-signed-up true]))
 
@@ -79,10 +75,10 @@
   (dispatch [:received-message
              {:message-id   (random/id)
               :content      (:message body)
-              :content-type text-content-type
+              :content-type const/text-content-type
               :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
+              :chat-id      const/console-chat-id
+              :from         const/console-chat-id
               :to           "me"}])
   (let [status (keyword (:status body))]
     (when (= :confirmed status)
@@ -93,128 +89,126 @@
     (when (= :failed status)
       (on-sign-up-response (label :t/incorrect-code)))))
 
-(defn start-signup []
-  (let [message-id (random/id)]
-    (dispatch [:received-message
-               {:message-id   message-id
-                :content      (command-content
-                                :phone
-                                (label :t/phone-number-required))
-                :content-type content-type-command-request
-                :outgoing     false
-                :chat-id      console-chat-id
-                :from         console-chat-id
-                :to           "me"}]))
-  (dispatch [:received-message
-             {:message-id   (random/id)
-              :content      (label :t/shake-your-phone)
-              :content-type text-content-type
-              :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
-              :to           "me"}]))
+(def start-signup-events
+  [[:received-message
+    {:message-id   (random/id)
+     :content      (command-content
+                    :phone
+                    (label :t/phone-number-required))
+     :content-type const/content-type-command-request
+     :outgoing     false
+     :chat-id      const/console-chat-id
+     :from         const/console-chat-id
+     :to           "me"}]
+   [:received-message
+    {:message-id   (random/id)
+     :content      (label :t/shake-your-phone)
+     :content-type const/text-content-type
+     :outgoing     false
+     :chat-id      const/console-chat-id
+     :from         const/console-chat-id
+     :to           "me"}]])
 
 ;; -- Saving password ----------------------------------------
 (defn account-generation-message []
   (dispatch [:received-message
-             {:message-id   const/crazy-math-message-id
+             {:message-id   chat-const/crazy-math-message-id
               :content      (label :t/account-generation-message)
-              :content-type text-content-type
+              :content-type const/text-content-type
               :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
+              :chat-id      const/console-chat-id
+              :from         const/console-chat-id
               :to           "me"}]))
 
 (defn move-to-internal-failure-message []
   (dispatch [:received-message
-             {:message-id   const/move-to-internal-failure-message-id
+             {:message-id   chat-const/move-to-internal-failure-message-id
               :content      (command-content
-                              :grant-permissions
-                              (label :t/move-to-internal-failure-message))
-              :content-type content-type-command-request
+                             :grant-permissions
+                             (label :t/move-to-internal-failure-message))
+              :content-type const/content-type-command-request
               :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
+              :chat-id      const/console-chat-id
+              :from         const/console-chat-id
               :to           "me"}]))
 
-
-(defn passphrase-messages [mnemonic signing-phrase crazy-math-message?]
-  (dispatch [:received-message
-             {:message-id   const/passphrase-message-id
-              :content      (if crazy-math-message?
-                              (label :t/phew-here-is-your-passphrase)
-                              (label :t/here-is-your-passphrase))
-              :content-type text-content-type
-              :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
-              :to           "me"}])
-  (dispatch [:received-message
-             {:message-id   (random/id)
-              :content      mnemonic
-              :content-type text-content-type
-              :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
-              :to           "me"}])
-  (dispatch [:received-message
-             {:message-id   const/signing-phrase-message-id
-              :content      (label :t/here-is-your-signing-phrase)
-              :content-type text-content-type
-              :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
-              :to           "me"}])
-  (dispatch [:received-message
-             {:message-id   (random/id)
-              :content      signing-phrase
-              :content-type text-content-type
-              :outgoing     false
-              :chat-id      console-chat-id
-              :from         console-chat-id
-              :to           "me"}])
-  (start-signup))
+(defn passphrase-messages-events [mnemonic signing-phrase crazy-math-message?]
+  (into [[:received-message
+          {:message-id   chat-const/passphrase-message-id
+           :content      (if crazy-math-message?
+                           (label :t/phew-here-is-your-passphrase)
+                           (label :t/here-is-your-passphrase))
+           :content-type const/text-content-type
+           :outgoing     false
+           :chat-id      const/console-chat-id
+           :from         const/console-chat-id
+           :to           "me"}]
+         [:received-message
+          {:message-id   (random/id)
+           :content      mnemonic
+           :content-type const/text-content-type
+           :outgoing     false
+           :chat-id      const/console-chat-id
+           :from         const/console-chat-id
+           :to           "me"}]
+         [:received-message
+          {:message-id   const/signing-phrase-message-id
+           :content      (label :t/here-is-your-signing-phrase)
+           :content-type text-content-type
+           :outgoing     false
+           :chat-id      console-chat-id
+           :from         console-chat-id
+           :to           "me"}]
+         [:received-message
+          {:message-id   (random/id)
+           :content      signing-phrase
+           :content-type text-content-type
+           :outgoing     false
+           :chat-id      console-chat-id
+           :from         console-chat-id
+           :to           "me"}]]
+        start-signup-events))
 
 (def intro-status
-  {:message-id   const/intro-status-message-id
+  {:message-id   chat-const/intro-status-message-id
    :content      (label :t/intro-status)
-   :from         console-chat-id
-   :chat-id      console-chat-id
-   :content-type content-type-status
+   :from         const/console-chat-id
+   :chat-id      const/console-chat-id
+   :content-type const/content-type-status
    :outgoing     false
    :to           "me"})
 
-(defn intro []
-  (dispatch [:received-message intro-status])
-  (dispatch [:received-message-when-commands-loaded
-             console-chat-id
-             {:chat-id      console-chat-id
-              :message-id   const/intro-message1-id
-              :content      (command-content
-                              :password
-                              (label :t/intro-message1))
-              :content-type content-type-command-request
-              :outgoing     false
-              :from         console-chat-id
-              :to           "me"}]))
+(def intro-events
+  [[:received-message intro-status]
+   [:received-message-when-commands-loaded
+    const/console-chat-id
+    {:chat-id      const/console-chat-id
+     :message-id   chat-const/intro-message1-id
+     :content      (command-content
+                    :password
+                    (label :t/intro-message1))
+     :content-type const/content-type-command-request
+     :outgoing     false
+     :from         const/console-chat-id
+     :to           "me"}]])
 
 (def console-chat
-  {:chat-id      console-chat-id
-   :name         (s/capitalize console-chat-id)
+  {:chat-id      const/console-chat-id
+   :name         (s/capitalize const/console-chat-id)
    :color        default-chat-color
    :group-chat   false
    :is-active    true
    :unremovable? true
    :timestamp    (.getTime (js/Date.))
-   :photo-path   console-chat-id
-   :contacts     [{:identity         console-chat-id
+   :photo-path   const/console-chat-id
+   :contacts     [{:identity         const/console-chat-id
                    :text-color       "#FFFFFF"
                    :background-color "#AB7967"}]})
 
 (def console-contact
-  {:whisper-identity  console-chat-id
-   :name              (s/capitalize console-chat-id)
-   :photo-path        console-chat-id
+  {:whisper-identity  const/console-chat-id
+   :name              (s/capitalize const/console-chat-id)
+   :photo-path        const/console-chat-id
    :dapp?             true
    :unremovable?      true
    :bot-url           "local://console-bot"
