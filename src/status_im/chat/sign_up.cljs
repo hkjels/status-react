@@ -152,20 +152,20 @@
            :from         const/console-chat-id
            :to           "me"}]
          [:received-message
-          {:message-id   const/signing-phrase-message-id
+          {:message-id   chat-const/signing-phrase-message-id
            :content      (label :t/here-is-your-signing-phrase)
-           :content-type text-content-type
+           :content-type const/text-content-type
            :outgoing     false
-           :chat-id      console-chat-id
-           :from         console-chat-id
+           :chat-id      const/console-chat-id
+           :from         const/console-chat-id
            :to           "me"}]
          [:received-message
           {:message-id   (random/id)
            :content      signing-phrase
-           :content-type text-content-type
+           :content-type const/text-content-type
            :outgoing     false
-           :chat-id      console-chat-id
-           :from         console-chat-id
+           :chat-id      const/console-chat-id
+           :from         const/console-chat-id
            :to           "me"}]]
         start-signup-events))
 
