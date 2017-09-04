@@ -1,10 +1,11 @@
 (ns status-im.chat.events.receive-message
   (:require [re-frame.core :refer [reg-cofx inject-cofx trim-v]]
+            [taoensso.timbre :as log]
             [status-im.utils.handlers :refer [register-handler-fx]]
             [status-im.utils.random :as random]
             [status-im.utils.clocks :as clocks]
             [status-im.constants :as const]
-            [status-im.chat.utils :as chat-utils] 
+            [status-im.chat.utils :as chat-utils]
             [status-im.chat.models.unviewed-messages :as unviewed-messages-model]
             [status-im.data-store.chats :as chat-store]
             [status-im.data-store.messages :as msg-store]))
@@ -33,6 +34,7 @@
 
 (defn- wallet-message
   [{:keys [content-type] :as message}]
+  (log/debug "Wallet msg")
   (let [wallet-ct (if (= content-type const/content-type-command)
                     const/content-type-wallet-command
                     const/content-type-wallet-request)]
@@ -77,17 +79,17 @@
                  :save-message (dissoc enriched-message :new?)}
 
           (get-in enriched-message [:content :command])
-          (conj :dispatch-n [:request-command-preview enriched-message])
+          (update :dispatch-n conj [:request-command-preview enriched-message])
 
           (= (:content-type enriched-message) const/content-type-command-request)
-          (conj :dispatch-n [:add-request chat-identifier enriched-message])
+          (update :dispatch-n conj [:add-request chat-identifier enriched-message])
           ;; TODO(janherich) refactor this ugly special treatment of wallet send commands for logged in user
           (and (= (get-in message [:content :params :bot-db :public :recipient :whisper-identity])
                   current-identity)
                (= content-type const/content-type-command)
                (not= chat-identifier const/wallet-chat-id)
                (= "send" (get-in message [:content :command])))
-          (conj :dispatch-n [:received-message (wallet-message (assoc message :message-id random-id))])))
+          (update :dispatch-n conj [:received-message (wallet-message (assoc message :message-id random-id))])))
       {:db db})))
 
 (def ^:private receive-interceptors

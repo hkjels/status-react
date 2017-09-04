@@ -1,6 +1,7 @@
 (ns status-im.chat.events
   (:require [re-frame.core :refer [reg-fx reg-cofx inject-cofx trim-v]]
             [tailrecursion.priority-map :refer [priority-map-by]]
+            [taoensso.timbre :as log]
             [status-im.utils.handlers :refer [register-handler-db register-handler-fx]]
             [status-im.utils.random :as random]
             [status-im.chat.models :as model]
@@ -58,7 +59,7 @@
 
 (reg-fx
   :save-message
-  (fn [{:keys [chat-id message]}]
+  (fn [{:keys [chat-id] :as message}]
     (msg-store/save chat-id message)))
 
 (reg-fx
@@ -92,10 +93,10 @@
                 :save-all-contacts [sign-up/console-contact]}
 
          (not current-account-id)
-         (update :dispatch-n into sign-up/intro-events)
+         (update :dispatch-n concat sign-up/intro-events)
 
          existing-account?
-         (update :dispatch-n into sign-up/start-signup-events))))))
+         (update :dispatch-n concat sign-up/start-signup-events))))))
 
 ;;;; Handlers
 
@@ -173,16 +174,20 @@
   :initialize-chats
   [(inject-cofx :all-stored-chats) (inject-cofx :stored-unviewed-messages) (inject-cofx :get-last-stored-message)]
   (fn [{:keys [db all-stored-chats stored-unviewed-messages get-last-stored-message]} _]
-    (let [{:accounts/keys [account-creation?]} db]
+    (let [{:accounts/keys [account-creation?]} db
+          new-db (unviewed-messages-model/load-unviewed-messages db stored-unviewed-messages)
+          event  [:load-default-contacts!]]
       (if account-creation?
-        {:db db}
+        {:db new-db
+         :dispatch-n [event]}
         (let [chats (->> all-stored-chats
                          (map (fn [{:keys [chat-id] :as chat}]
                                 [chat-id (assoc chat :last-message (get-last-stored-message chat-id))]))
                          (into (priority-map-by compare-chats)))]
-          (-> (init-console-chat (assoc db :chats chats) true)
-              (update :db unviewed-messages-model/load-unviewed-messages stored-unviewed-messages)
-              (update :dispatch-n conj [:load-default-contacts!])))))))
+          (-> new-db
+              (assoc :chats chats)
+              (init-console-chat true)
+              (update :dispatch-n conj event)))))))
 
 (register-handler-fx
   :reload-chats
@@ -194,7 +199,8 @@
                                           updated-chat     (assoc chat :last-message (get-last-stored-message chat-id))]
                                       [chat-id (merge prev-chat updated-chat)])))
                              (into (priority-map-by compare-chats)))]
-      (init-console-chat (assoc db :chats updated-chats) true))))
+      (-> (assoc db :chats updated-chats)
+          (init-console-chat true)))))
 
 (register-handler-fx
   :send-seen!
