@@ -444,7 +444,7 @@
         (set-chat-input-text nil)
         (model/set-chat-ui-props {:sending-in-progress? false})
         update-suggestions
-        ;; TODO: refactor send-message.cljs to use atomic pure handlers and get rid of this dispatch 
+        ;; TODO: refactor send-message.cljs to use atomic pure handlers and get rid of this dispatch
         (assoc :dispatch [:check-commands-handlers! {:message (get-in db [:chats current-chat-id :input-text])
                                                      :command  command-message
                                                      :chat-id  current-chat-id

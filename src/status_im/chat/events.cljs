@@ -132,20 +132,18 @@
   (fn [{{:keys [current-chat-id loading-allowed] :as db} :db
         get-stored-messages :get-stored-messages} _]
     (let [all-loaded? (get-in db [:chats current-chat-id :all-loaded?])]
-      (if loading-allowed
-        (if all-loaded?
-          {:db db}
-          (let [messages-path [:chats current-chat-id :messages]
-                messages      (get-in db messages-path)
-                chat-messages (filter #(= current-chat-id (:chat-id %)) messages)
-                new-messages  (get-stored-messages current-chat-id (count chat-messages))
-                all-loaded?   (> const/default-number-of-messages (count new-messages))]
-            {:db (-> db
-                     (assoc :loading-allowed false)
-                     (update-in messages-path concat new-messages)
-                     (assoc-in [:chats current-chat-id :all-loaded?] all-loaded?))
-             ;; we permit loading more messages again after 400ms
-             :dispatch-later [{:ms 400 :dispatch [:set :loading-allowed true]}]}))
+      (if (and loading-allowed (not all-loaded?))
+        (let [messages-path [:chats current-chat-id :messages]
+              messages      (get-in db messages-path)
+              chat-messages (filter #(= current-chat-id (:chat-id %)) messages)
+              new-messages  (get-stored-messages current-chat-id (count chat-messages))
+              all-loaded?   (> const/default-number-of-messages (count new-messages))]
+          {:db (-> db
+                   (assoc :loading-allowed false)
+                   (update-in messages-path concat new-messages)
+                   (assoc-in [:chats current-chat-id :all-loaded?] all-loaded?))
+           ;; we permit loading more messages again after 400ms
+           :dispatch-later [{:ms 400 :dispatch [:set :loading-allowed true]}]})
         {:db db}))))
 
 (register-handler-db
@@ -196,7 +194,7 @@
     (let [updated-chats (->> all-stored-chats
                              (map (fn [{:keys [chat-id] :as chat}]
                                     (let [prev-chat    (get (:chats db) chat-id)
-                                          updated-chat     (assoc chat :last-message (get-last-stored-message chat-id))]
+                                          updated-chat (assoc chat :last-message (get-last-stored-message chat-id))]
                                       [chat-id (merge prev-chat updated-chat)])))
                              (into (priority-map-by compare-chats)))]
       (-> (assoc db :chats updated-chats)
@@ -210,7 +208,7 @@
            :contacts/keys [contacts]} db
           {:keys [group-chat public?]} (get chats chat-id)]
       (cond-> {:db (unviewed-messages-model/remove-unviewed-messages db chat-id)
-               :update-message {:message-id      message-id
+               :update-message {:message-id     message-id
                                 :message-status :seen}}
         (and (not (get-in contacts [chat-id] :dapp?))
              (not public?))
