@@ -16,7 +16,7 @@
             status-im.ui.screens.profile.events
             status-im.ui.screens.qr-scanner.events
             status-im.ui.screens.wallet.events
-            [re-frame.core :refer [dispatch reg-fx]]
+            [re-frame.core :refer [dispatch reg-fx reg-cofx]]
             [status-im.components.status :as status]
             [status-im.components.permissions :as permissions]
             [status-im.constants :refer [console-chat-id]]
@@ -24,6 +24,7 @@
             [status-im.i18n :as i18n]
             [status-im.js-dependencies :as dependencies]
             [status-im.ui.screens.db :refer [app-db]]
+            [status-im.utils.datetime :as time]
             [status-im.utils.config :as config]
             [status-im.utils.crypt :as crypt]
             [status-im.utils.notifications :as notifications]
@@ -54,6 +55,11 @@
                     (dispatch event)))})))
 
 ;;;; COFX
+
+(reg-cofx
+ :now
+ (fn [coeffects _]
+   (assoc coeffects :now (time/now-ms))))
 
 ;;;; FX
 

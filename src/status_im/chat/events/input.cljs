@@ -1,6 +1,6 @@
 (ns status-im.chat.events.input
   (:require [clojure.string :as str]
-            [re-frame.core :refer [reg-fx reg-cofx inject-cofx dispatch trim-v]]
+            [re-frame.core :as re-frame]
             [taoensso.timbre :as log]
             [status-im.chat.constants :as const]
             [status-im.chat.utils :as chat-utils]
@@ -12,20 +12,13 @@
             [status-im.bots.events :as bots-events]
             [status-im.components.react :as react-comp]
             [status-im.utils.datetime :as time]
-            [status-im.utils.handlers :refer [register-handler-db register-handler-fx]]
+            [status-im.utils.handlers :as handlers]
             [status-im.utils.random :as random]
             [status-im.i18n :as i18n]))
 
-;;;; Coeffects
-
-(reg-cofx
- :now
- (fn [coeffects _]
-   (assoc coeffects :now (time/now-ms))))
-
 ;;;; Effects
 
-(reg-fx
+(re-frame/reg-fx
   ::focus-rn-component
   (fn [ref]
     (try
@@ -33,7 +26,7 @@
       (catch :default e
         (log/debug "Cannot focus the reference")))))
 
-(reg-fx
+(re-frame/reg-fx
   ::blur-rn-component
   (fn [ref]
     (try
@@ -41,12 +34,12 @@
       (catch :default e
         (log/debug "Cannot blur the reference")))))
 
-(reg-fx
+(re-frame/reg-fx
   ::dismiss-keyboard
   (fn [_]
     (react-comp/dismiss-keyboard!)))
 
-(reg-fx
+(re-frame/reg-fx
   ::set-native-props
   (fn [{:keys [ref props]}]
     (.setNativeProps ref (clj->js props))))
@@ -107,6 +100,13 @@
   "Sets input text for current sequential argument in active chat"
   [{:keys [current-chat-id] :as db} text]
   (assoc-in db [:chats current-chat-id :seq-argument-input-text] text))
+
+(defn clear-seq-arguments
+  "Clears sequential arguments for current-chat"
+  [{:keys [current-chat-id chats] :as db}]
+  (-> db
+      (assoc-in [:chats current-chat-id :seq-arguments] [])
+      (assoc-in [:chats current-chat-id :seq-argument-input-text] nil)))
 
 (defn set-command-argument
   "Sets command argument in active chat"
@@ -252,13 +252,6 @@
                                                 (min (count input-text)))]
               (merge fx (update-text-selection new-db new-selection)))))))
 
-(defn clear-seq-arguments
-  "Clears sequential arguments for current-chat"
-  [{:keys [current-chat-id chats] :as db}]
-  (-> db
-      (assoc-in [:chats current-chat-id :seq-arguments] [])
-      (assoc-in [:chats current-chat-id :seq-argument-input-text] nil)))
-
 (defn- request-command-data
   "Requests command data from jail"
   [{:keys [bot-db] :contacts/keys [contacts] :as db}
@@ -332,78 +325,78 @@
 
 ;;;; Handlers
 
-(register-handler-db
+(handlers/register-handler-db
   :update-input-data
   (fn [db]
     (input-model/modified-db-after-change db)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :set-chat-input-text
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [text]]
     (-> db
         (set-chat-input-text text)
         update-suggestions)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :add-to-chat-input-text
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [text-to-add]]
     (-> db
         (set-chat-input-text text-to-add :append? true)
         update-suggestions)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :select-chat-input-command
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [command metadata prevent-auto-focus?]]
     (select-chat-input-command db command metadata prevent-auto-focus?)))
 
-(register-handler-db
+(handlers/register-handler-db
   :set-chat-input-metadata
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [data]]
     (set-chat-input-metadata db data)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :set-command-argument
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [[index arg move-to-next?]]]
     (set-command-argument db index arg move-to-next?)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :chat-input-focus
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [ref]]
     (chat-input-focus db ref)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :chat-input-blur
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{{:keys [current-chat-id chat-ui-props]} :db} [ref]]
     (when-let [cmp-ref (get-in chat-ui-props [current-chat-id ref])]
       {::blur-rn-component cmp-ref})))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :update-suggestions
   (fn [{:keys [db]} _]
     (update-suggestions db)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :load-chat-parameter-box
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [command]]
     (load-chat-parameter-box db command)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :proceed-command
-  [trim-v (inject-cofx :random-id) (inject-cofx :now)]
+  [re-frame/trim-v (re-frame/inject-cofx :random-id) (re-frame/inject-cofx :now)]
   (fn [{:keys [db random-id now]} [content]]
     (proceed-command db content random-id now)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   ::proceed-validation
-  [trim-v]
+  [re-frame/trim-v]
   (fn [_ [{:keys [markup validationHandler parameters]} proceed-events]]
     (let [error-events-creator (fn [validator-result]
                                  [[:set-chat-ui-props {:validation-messages  validator-result
@@ -421,23 +414,23 @@
                    proceed-events)]
       {:dispatch-n events})))
 
-(register-handler-fx
+(handlers/register-handler-fx
   ::execute-validation-handler
-  [trim-v]
+  [re-frame/trim-v]
   (fn [_ [validation-handler-name params error-events-creator proceed-events]]
     (let [error-events (when-let [validator (input-model/validation-handler validation-handler-name)]
                          (validator params error-events-creator))]
       {:dispatch-n (or error-events proceed-events)})))
 
-(register-handler-fx
+(handlers/register-handler-fx
   ::request-command-data
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [command-params]]
     (request-command-data db command-params)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   ::send-command
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{{:keys [current-public-key current-chat-id]
          :accounts/keys [current-account-id] :as db} :db} [{:keys [command] :as command-message}]]
     (-> db
@@ -453,9 +446,9 @@
                                                      :identity current-public-key
                                                      :address  current-account-id}]))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   ::check-command-type
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{{:keys [current-chat-id] :as db} :db} [on-send-jail-response params-template]]
     (if on-send-jail-response
       ;; `onSend` is defined, we have non-sendable command here, like `@browse`
@@ -470,9 +463,9 @@
                                        :event-after-creator (fn [command-message _]
                                                               [::send-command command-message])})))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :send-current-message
-  [(inject-cofx :random-id) (inject-cofx :now)]
+  [(re-frame/inject-cofx :random-id) (re-frame/inject-cofx :now)]
   (fn [{{:keys [current-chat-id current-public-key] :as db} :db message-id :random-id current-time :now} _]
     (let [input-text   (get-in db [:chats current-chat-id :input-text])
           chat-command (-> db
@@ -508,14 +501,14 @@
                                                   :address  (:accounts/current-account-id db)}])))))))
 
 ;; TODO: remove this handler and leave only helper fn once all invocations are refactored
-(register-handler-db
+(handlers/register-handler-db
   :clear-seq-arguments
   (fn [db]
     (clear-seq-arguments db)))
 
-(register-handler-db
+(handlers/register-handler-db
   ::update-seq-arguments
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [current-chat-id chats] :as db} [chat-id]]
     (let [chat-id (or chat-id current-chat-id)
           text    (get-in chats [chat-id :seq-argument-input-text])]
@@ -523,7 +516,7 @@
           (update-in [:chats chat-id :seq-arguments] #(into [] (conj % text)))
           (assoc-in [:chats chat-id :seq-argument-input-text] nil)))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :send-seq-argument
   (fn [{{:keys [current-chat-id chats] :as db} :db} _]
     (let [text             (get-in chats [current-chat-id :seq-argument-input-text])
@@ -540,19 +533,19 @@
                                                         [[::update-seq-arguments current-chat-id]
                                                          [:send-current-message]]])}))))
 
-(register-handler-db
+(handlers/register-handler-db
   :set-chat-seq-arg-input-text
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [text]]
     (set-chat-seq-arg-input-text db text)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :update-text-selection
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [selection]]
     (update-text-selection db selection)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :select-prev-argument
   (fn [{{:keys [chat-ui-props current-chat-id] :as db} :db} _]
     (let [input-text (get-in db [:chats current-chat-id :input-text])
@@ -576,13 +569,13 @@
                          {:ref ref
                           :props {:selection {:start new-sel :end new-sel}}})))))))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :set-contact-as-command-argument
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [params]]
     (set-contact-as-command-argument db params)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :show-suggestions
   (fn [{:keys [db]} _]
     (-> db

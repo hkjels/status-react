@@ -1,7 +1,7 @@
 (ns status-im.chat.events.receive-message
-  (:require [re-frame.core :refer [reg-cofx inject-cofx trim-v]]
+  (:require [re-frame.core :as re-frame]
             [taoensso.timbre :as log]
-            [status-im.utils.handlers :refer [register-handler-fx]]
+            [status-im.utils.handlers :as handlers]
             [status-im.utils.random :as random]
             [status-im.utils.clocks :as clocks]
             [status-im.constants :as const]
@@ -10,19 +10,19 @@
             [status-im.data-store.chats :as chat-store]
             [status-im.data-store.messages :as msg-store]))
 
-(reg-cofx
+(re-frame/reg-cofx
  :pop-up-chat?
  (fn [cofx]
    (assoc cofx :pop-up-chat? (fn [chat-id]
                                (or (not (chat-store/exists? chat-id))
                                    (chat-store/is-active? chat-id))))))
 
-(reg-cofx
+(re-frame/reg-cofx
  :get-last-clock-value
  (fn [cofx]
    (assoc cofx :get-last-clock-value msg-store/get-last-clock-value)))
 
-(reg-cofx
+(re-frame/reg-cofx
  :current-timestamp
  (fn [cofx]
    ;; TODO (janherich) why is actual timestmap generation in random namespace ?
@@ -93,10 +93,12 @@
       {:db db})))
 
 (def ^:private receive-interceptors
-  [(inject-cofx :get-stored-message) (inject-cofx :get-last-stored-message) (inject-cofx :pop-up-chat?)
-   (inject-cofx :get-last-clock-value) (inject-cofx :current-timestamp) (inject-cofx :random-id) trim-v])
+  [(re-frame/inject-cofx :get-stored-message) (re-frame/inject-cofx :get-last-stored-message)
+   (re-frame/inject-cofx :pop-up-chat?) (re-frame/inject-cofx :get-last-clock-value)
+   (re-frame/inject-cofx :current-timestamp) (re-frame/inject-cofx :random-id)
+   re-frame/trim-v])
 
-(register-handler-fx
+(handlers/register-handler-fx
   :received-protocol-message!
   receive-interceptors
   (fn [cofx [{:keys [from to payload]}]]
@@ -105,13 +107,13 @@
                               :to      to
                               :chat-id from}))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :received-message
   receive-interceptors
   (fn [cofx [message]]
     (add-message cofx message)))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :received-message-when-commands-loaded
   receive-interceptors
   (fn [{:keys [db] :as cofx} [chat-id message]]

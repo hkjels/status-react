@@ -1,8 +1,8 @@
 (ns status-im.chat.events
-  (:require [re-frame.core :refer [reg-fx reg-cofx inject-cofx trim-v]]
-            [tailrecursion.priority-map :refer [priority-map-by]]
+  (:require [re-frame.core :as re-frame]
+            [tailrecursion.priority-map :as priority-map]
             [taoensso.timbre :as log]
-            [status-im.utils.handlers :refer [register-handler-db register-handler-fx]]
+            [status-im.utils.handlers :as handlers]
             [status-im.utils.random :as random]
             [status-im.chat.models :as model]
             [status-im.chat.models.unviewed-messages :as unviewed-messages-model]
@@ -13,6 +13,7 @@
             [status-im.data-store.chats :as chats-store]
             [status-im.protocol.core :as protocol]
             [status-im.constants :as const]
+            [status-im.ui.screens.accounts.events :as accounts-events]
             status-im.chat.events.input
             status-im.chat.events.commands
             status-im.chat.events.animation
@@ -20,59 +21,59 @@
 
 ;;;; Coeffects
 
-(reg-cofx
+(re-frame/reg-cofx
  :random-id
  (fn [coeffects _]
    (assoc coeffects :random-id (random/id))))
 
-(reg-cofx
+(re-frame/reg-cofx
  :stored-unviewed-messages
  (fn [cofx _]
    (assoc cofx :stored-unviewed-messages (msg-store/get-unviewed))))
 
-(reg-cofx
+(re-frame/reg-cofx
  :get-stored-message
  (fn [cofx _]
    (assoc cofx :get-stored-message msg-store/get-by-id)))
 
-(reg-cofx
+(re-frame/reg-cofx
  :get-stored-messages
  (fn [cofx _]
    (assoc cofx :get-stored-messages msg-store/get-by-chat-id)))
 
-(reg-cofx
+(re-frame/reg-cofx
  :get-last-stored-message
  (fn [cofx _]
    (assoc cofx :get-last-stored-message msg-store/get-last-message)))
 
-(reg-cofx
+(re-frame/reg-cofx
  :all-stored-chats
  (fn [cofx _]
    (assoc cofx :all-stored-chats (chats-store/get-all))))
 
 ;;;; Effects
 
-(reg-fx
+(re-frame/reg-fx
   :update-message
   (fn [message]
     (msg-store/update message)))
 
-(reg-fx
+(re-frame/reg-fx
   :save-message
   (fn [{:keys [chat-id] :as message}]
     (msg-store/save chat-id message)))
 
-(reg-fx
+(re-frame/reg-fx
   :save-chat
   (fn [chat]
     (chats-store/save chat)))
 
-(reg-fx
+(re-frame/reg-fx
   :save-all-contacts
   (fn [contacts]
     (contacts-store/save-all contacts)))
 
-(reg-fx
+(re-frame/reg-fx
   :protocol-send-seen
   (fn [params]
     (protocol/send-seen! params)))
@@ -100,35 +101,35 @@
 
 ;;;; Handlers
 
-(register-handler-db
+(handlers/register-handler-db
   :set-layout-height
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [height]]
     (assoc db :layout-height height)))
 
-(register-handler-db
+(handlers/register-handler-db
   :set-chat-ui-props
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [kvs]]
     (model/set-chat-ui-props db kvs)))
 
-(register-handler-db
+(handlers/register-handler-db
   :toggle-chat-ui-props
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [ui-element]]
     (model/toggle-chat-ui-prop db ui-element)))
 
-(register-handler-db
+(handlers/register-handler-db
   :show-message-details
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [details]]
     (model/set-chat-ui-props db {:show-bottom-info? true
                                  :show-emoji?       false
                                  :bottom-info       details})))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :load-more-messages
-  [(inject-cofx :get-stored-messages)]
+  [(re-frame/inject-cofx :get-stored-messages)]
   (fn [{{:keys [current-chat-id loading-allowed] :as db} :db
         get-stored-messages :get-stored-messages} _]
     (let [all-loaded? (get-in db [:chats current-chat-id :all-loaded?])]
@@ -146,9 +147,9 @@
            :dispatch-later [{:ms 400 :dispatch [:set :loading-allowed true]}]})
         {:db db}))))
 
-(register-handler-db
+(handlers/register-handler-db
   :set-message-shown
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [{:keys [chat-id message-id]}]]
     (update-in db
                [:chats chat-id :messages]
@@ -159,7 +160,7 @@
                           message))
                       messages)))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :init-console-chat
   (fn [{:keys [db]} _]
     (init-console-chat db false)))
@@ -168,9 +169,11 @@
   [{timesatmp1 :timestamp} {timestamp2 :timestamp}]
   (compare timestamp2 timesatmp1))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :initialize-chats
-  [(inject-cofx :all-stored-chats) (inject-cofx :stored-unviewed-messages) (inject-cofx :get-last-stored-message)]
+  [(re-frame/inject-cofx :all-stored-chats)
+   (re-frame/inject-cofx :stored-unviewed-messages)
+   (re-frame/inject-cofx :get-last-stored-message)]
   (fn [{:keys [db all-stored-chats stored-unviewed-messages get-last-stored-message]} _]
     (let [{:accounts/keys [account-creation?]} db
           new-db (unviewed-messages-model/load-unviewed-messages db stored-unviewed-messages)
@@ -181,28 +184,28 @@
         (let [chats (->> all-stored-chats
                          (map (fn [{:keys [chat-id] :as chat}]
                                 [chat-id (assoc chat :last-message (get-last-stored-message chat-id))]))
-                         (into (priority-map-by compare-chats)))]
+                         (into (priority-map/priority-map-by compare-chats)))]
           (-> new-db
               (assoc :chats chats)
               (init-console-chat true)
               (update :dispatch-n conj event)))))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :reload-chats
-  [(inject-cofx :all-stored-chats) (inject-cofx :get-last-stored-message)]
+  [(re-frame/inject-cofx :all-stored-chats) (re-frame/inject-cofx :get-last-stored-message)]
   (fn [{:keys [db all-stored-chats get-last-stored-message]} _]
     (let [updated-chats (->> all-stored-chats
                              (map (fn [{:keys [chat-id] :as chat}]
                                     (let [prev-chat    (get (:chats db) chat-id)
                                           updated-chat (assoc chat :last-message (get-last-stored-message chat-id))]
                                       [chat-id (merge prev-chat updated-chat)])))
-                             (into (priority-map-by compare-chats)))]
+                             (into (priority-map/priority-map-by compare-chats)))]
       (-> (assoc db :chats updated-chats)
           (init-console-chat true)))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :send-seen!
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [{:keys [message-id chat-id from]}]]
     (let [{:keys [web3 current-public-key chats]
            :contacts/keys [contacts]} db
@@ -219,25 +222,25 @@
                                   :message-id message-id}
                            group-chat (assoc :group-id chat-id))})))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :show-mnemonic
-  [(inject-cofx :get-stored-message) trim-v]
+  [(re-frame/inject-cofx :get-stored-message) re-frame/trim-v]
   (fn [{:keys [get-stored-message]} [mnemonic signing-phrase]]
     (let [crazy-math-message? (get-stored-message chat-const/crazy-math-message-id)]
       {:dispatch-n (sign-up/passphrase-messages-events mnemonic
                                                        signing-phrase
                                                        crazy-math-message?)})))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :account-generation-message
-  [(inject-cofx :get-stored-message)]
+  [(re-frame/inject-cofx :get-stored-message)]
   (fn [{:keys [get-stored-message]} _]
     (when-not (get-stored-message chat-const/passphrase-message-id)
-      {:dispatch sign-up-service/account-generation-event})))
+      {:dispatch sign-up/account-generation-event})))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :move-to-internal-failure-message
-  [(inject-cofx :get-stored-message)]
+  [(re-frame/inject-cofx :get-stored-message)]
   (fn [{:keys [get-stored-message]} _]
     (when-not (get-stored-message chat-const/move-to-internal-failure-message-id)
-      {:dispatch sign-up-service/move-to-internal-failure-event})))
+      {:dispatch sign-up/move-to-internal-failure-event})))

@@ -1,9 +1,9 @@
 (ns status-im.chat.events.commands
   (:require [cljs.reader :as reader]
             [clojure.string :as str]
-            [re-frame.core :refer [inject-cofx dispatch trim-v]]
+            [re-frame.core :as re-frame]
             [taoensso.timbre :as log]
-            [status-im.utils.handlers :refer [register-handler-fx]]
+            [status-im.utils.handlers :as handlers]
             [status-im.i18n :as i18n]
             [status-im.utils.platform :as platform]))
 
@@ -47,14 +47,14 @@
                                                 [[::jail-command-data-response
                                                   jail-response message data-type]])}})
       {:dispatch-n [[:add-commands-loading-callback jail-id
-                     #(dispatch [:request-command-message-data message data-type])]
+                     #(re-frame/dispatch [:request-command-message-data message data-type])]
                     [:load-commands! jail-id]]})))
 
 ;;;; Handlers
 
-(register-handler-fx
+(handlers/register-handler-fx
   ::jail-command-data-response
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [{{:keys [returned]} :result} {:keys [message-id on-requested]} data-type]]
     (cond-> {}
       returned
@@ -66,27 +66,27 @@
       on-requested
       (assoc :dispatch (on-requested returned)))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :request-command-message-data
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [message data-type]]
     (request-command-message-data db message data-type)))
 
 
-(register-handler-fx
+(handlers/register-handler-fx
   :execute-command-immediately
-  [trim-v]
+  [re-frame/trim-v]
   (fn [_ [{command-name :name :as command}]]
     (case (keyword command-name)
       :grant-permissions
       {:dispatch [:request-permissions
                   [:read-external-storage]
-                  #(dispatch [:initialize-geth])]}
+                  #(re-frame/dispatch [:initialize-geth])]}
       (log/debug "ignoring command: " command))))
 
-(register-handler-fx
+(handlers/register-handler-fx
   :request-command-preview
-  [trim-v (inject-cofx :get-stored-message)]
+  [re-frame/trim-v (re-frame/inject-cofx :get-stored-message)]
   (fn [{:keys [db get-stored-message]} [{:keys [message-id] :as message}]]
     (let [previews (get-in db [:message-data :preview])]
       (when-not (contains? previews message-id)

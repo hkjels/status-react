@@ -1,6 +1,6 @@
 (ns status-im.bots.events
-  (:require [re-frame.core :refer [trim-v]]
-            [status-im.utils.handlers :refer [register-handler-db register-handler-fx]]))
+  (:require [re-frame.core :as re-frame]
+            [status-im.utils.handlers :as handlers]))
 
 ;;;; Helper fns
 
@@ -61,21 +61,21 @@
 
 ;;;; Handlers
 
-(register-handler-fx
+(handlers/register-handler-fx
   :set-in-bot-db
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [db]} [params]]
     (set-in-bot-db db params)))
 
-(register-handler-db
+(handlers/register-handler-db
   :update-bot-db
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [params]]
     (update-bot-db db params)))
 
-(register-handler-db
+(handlers/register-handler-db
   :register-bot-subscription
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [{:keys [bot subscriptions] :as opts}]]
     (reduce
      (fn [db [sub-name sub-path]]
@@ -88,9 +88,9 @@
      db
      subscriptions)))
 
-(register-handler-db
+(handlers/register-handler-db
   ::calculated-subscription
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [{:keys                  [bot path]
             {:keys [error result]} :result}]]
     (if error

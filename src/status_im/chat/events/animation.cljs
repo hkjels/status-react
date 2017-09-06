@@ -1,7 +1,7 @@
 (ns status-im.chat.events.animation
-  (:require [re-frame.core :refer [trim-v]]
+  (:require [re-frame.core :as re-frame]
             [status-im.chat.views.input.utils :as input-utils]
-            [status-im.utils.handlers :refer [register-handler-db]]
+            [status-im.utils.handlers :as handlers]
             [status-im.utils.platform :as platform]
             [taoensso.timbre :as log]))
 
@@ -29,21 +29,21 @@
 
 ;;;; Handlers
 
-(register-handler-db
+(handlers/register-handler-db
   :set-expandable-height
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [key value]]
     (set-expandable-height db key value)))
 
-(register-handler-db
+(handlers/register-handler-db
   :choose-predefined-expandable-height
-  [trim-v]
+  [re-frame/trim-v]
   (fn [db [key preset]]
     (choose-predefined-expandable-height db key preset)))
 
-(register-handler-db
+(handlers/register-handler-db
   :fix-expandable-height
-  [trim-v]
+  [re-frame/trim-v]
   (fn [{:keys [current-chat-id chats chat-ui-props layout-height] :as db} [vy current key]]
     (let [input-height      (get-in chat-ui-props [current-chat-id :input-height])
           chat-input-margin (if platform/ios?
