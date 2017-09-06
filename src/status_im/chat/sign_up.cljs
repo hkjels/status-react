@@ -110,27 +110,27 @@
      :to           "me"}]])
 
 ;; -- Saving password ----------------------------------------
-(defn account-generation-message []
-  (dispatch [:received-message
-             {:message-id   chat-const/crazy-math-message-id
-              :content      (label :t/account-generation-message)
-              :content-type const/text-content-type
-              :outgoing     false
-              :chat-id      const/console-chat-id
-              :from         const/console-chat-id
-              :to           "me"}]))
+(def account-generation-event
+  [:received-message
+   {:message-id   chat-const/crazy-math-message-id
+    :content      (label :t/account-generation-message)
+    :content-type const/text-content-type
+    :outgoing     false
+    :chat-id      const/console-chat-id
+    :from         const/console-chat-id
+    :to           "me"}])
 
-(defn move-to-internal-failure-message []
-  (dispatch [:received-message
-             {:message-id   chat-const/move-to-internal-failure-message-id
-              :content      (command-content
-                             :grant-permissions
-                             (label :t/move-to-internal-failure-message))
-              :content-type const/content-type-command-request
-              :outgoing     false
-              :chat-id      const/console-chat-id
-              :from         const/console-chat-id
-              :to           "me"}]))
+(def move-to-internal-failure-event
+  [:received-message
+   {:message-id   chat-const/move-to-internal-failure-message-id
+    :content      (command-content
+                   :grant-permissions
+                   (label :t/move-to-internal-failure-message))
+    :content-type const/content-type-command-request
+    :outgoing     false
+    :chat-id      const/console-chat-id
+    :from         const/console-chat-id
+    :to           "me"}])
 
 (defn passphrase-messages-events [mnemonic signing-phrase crazy-math-message?]
   (into [[:received-message

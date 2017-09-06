@@ -37,22 +37,6 @@
             [taoensso.timbre :as log]
             [tailrecursion.priority-map :refer [priority-map-by]]))
 
-(register-handler :account-generation-message
-  (u/side-effect!
-    (fn [_]
-      (when-not (messages/get-by-id chat-consts/passphrase-message-id)
-        (sign-up-service/account-generation-message)))))
-
-(register-handler :move-to-internal-failure-message
-  (u/side-effect!
-    (fn [_]
-      (when-not (messages/get-by-id chat-consts/move-to-internal-failure-message-id)
-        (sign-up-service/move-to-internal-failure-message)))))
-
-(defn- handle-sms [{body :body}]
-  (when-let [matches (re-matches #"(\d{4})" body)]
-    (dispatch [:sign-up-confirm (second matches)])))
-
 (register-handler :sign-up
   (after (fn [_ [_ phone-number]]
            (dispatch [:account-update {:phone phone-number}])))

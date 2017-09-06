@@ -227,3 +227,17 @@
       {:dispatch-n (sign-up/passphrase-messages-events mnemonic
                                                        signing-phrase
                                                        crazy-math-message?)})))
+
+(register-handler-fx
+  :account-generation-message
+  [(inject-cofx :get-stored-message)]
+  (fn [{:keys [get-stored-message]} _]
+    (when-not (get-stored-message chat-const/passphrase-message-id)
+      {:dispatch sign-up-service/account-generation-event})))
+
+(register-handler-fx
+  :move-to-internal-failure-message
+  [(inject-cofx :get-stored-message)]
+  (fn [{:keys [get-stored-message]} _]
+    (when-not (get-stored-message chat-const/move-to-internal-failure-message-id)
+      {:dispatch sign-up-service/move-to-internal-failure-event})))
