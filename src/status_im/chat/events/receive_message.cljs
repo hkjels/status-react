@@ -99,7 +99,7 @@
 (register-handler-fx
   :received-protocol-message!
   receive-interceptors
-  (fn [cofx {:keys [from to payload]}]
+  (fn [cofx [{:keys [from to payload]}]]
     (add-message cofx (merge payload
                              {:from    from
                               :to      to
