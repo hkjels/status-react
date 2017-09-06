@@ -140,7 +140,7 @@
                                    (subs command-name 1)))
                               (vals possible-actions))
                       (first))]
-         {:command   command 
+         {:command   command
           :metadata  (if (and (nil? (:to-message-id input-metadata)) (not= :any to-message-id))
                        (assoc input-metadata :to-message-id to-message-id)
                        input-metadata)
@@ -183,7 +183,7 @@
   (let [input-text    (get-in db [:chats current-chat-id :input-text])
         seq-arguments (get-in db [:chats current-chat-id :seq-arguments])
         selection     (get-in db [:chat-ui-props current-chat-id :selection])
-        chat-command  (selected-chat-command db current-chat-id)]
+        chat-command  (selected-chat-command db current-chat-id)] 
     (current-chat-argument-position chat-command input-text selection seq-arguments)))
 
 (defn command-completion

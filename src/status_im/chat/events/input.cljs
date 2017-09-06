@@ -198,6 +198,7 @@
    {:keys [prefill prefill-bot-db sequential-params name] :as command} metadata prevent-auto-focus?]
   (let [fx (-> db
                bots-events/clear-bot-db
+               clear-seq-arguments
                (model/set-chat-ui-props {:show-suggestions?   false
                                          :show-emoji?         false
                                          :result-box          nil
@@ -440,6 +441,7 @@
   (fn [{{:keys [current-public-key current-chat-id]
          :accounts/keys [current-account-id] :as db} :db} [{:keys [command] :as command-message}]]
     (-> db
+        clear-seq-arguments
         (set-chat-input-metadata nil)
         (set-chat-input-text nil)
         (model/set-chat-ui-props {:sending-in-progress? false})
